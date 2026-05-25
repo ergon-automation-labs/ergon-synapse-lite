@@ -1,0 +1,28 @@
+# Build
+/_build/
+/deps/
+/doc/
+
+# Releases
+/rel/
+
+# Runtime
+*.ez
+*.beam
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+
+# Test
+/cover/
