@@ -1282,159 +1282,158 @@ defmodule BotArmySynapse.Orchestrator do
                             # GeneralPurposeDiscord not available in lite mode
                             run_id = UUID.uuid4()
 
-                                progress_base = %{
-                                  "run_id" => run_id,
-                                  "channel_id" => channel_id,
-                                  "tenant_id" => tenant_id,
-                                  "user_id" => user_id
-                                }
+                            progress_base = %{
+                              "run_id" => run_id,
+                              "channel_id" => channel_id,
+                              "tenant_id" => tenant_id,
+                              "user_id" => user_id
+                            }
 
-                                track_run_start(run_id, "discord.chat", %{
-                                  "tenant_id" => tenant_id,
-                                  "user_id" => user_id,
-                                  "session_id" => session_id,
-                                  "channel_id" => channel_id,
-                                  "question" => text
-                                })
+                            track_run_start(run_id, "discord.chat", %{
+                              "tenant_id" => tenant_id,
+                              "user_id" => user_id,
+                              "session_id" => session_id,
+                              "channel_id" => channel_id,
+                              "question" => text
+                            })
+
+                            publish_synapse_progress(
+                              Map.merge(progress_base, %{"step" => "preflight_started"})
+                            )
+
+                            # Process LLM synchronously so Gnat.request gets the actual response
+                            context_sources =
+                              resolve_context_sources(
+                                default_context_sources() ++ ["time"],
+                                text
+                              )
+
+                            publish_synapse_progress(
+                              Map.merge(progress_base, %{
+                                "step" => "context_lookup_started",
+                                "context_sources" => context_sources
+                              })
+                            )
+
+                            context_data = gather_context(context_sources, text)
+                            context_summary = format_context_summary(context_data)
+
+                            publish_synapse_progress(
+                              Map.merge(progress_base, %{
+                                "step" => "context_lookup_completed",
+                                "context_summary" => context_summary
+                              })
+                            )
+
+                            prompt =
+                              build_discord_prompt(
+                                text,
+                                author_name,
+                                command,
+                                context_data,
+                                conversation_history
+                              )
+
+                            publish_synapse_progress(
+                              Map.merge(progress_base, %{"step" => "llm_request_started"})
+                            )
+
+                            case call_llm_sync(prompt,
+                                   request_ctx: %{
+                                     tenant_id: tenant_id,
+                                     user_id: user_id,
+                                     run_id: run_id
+                                   }
+                                 ) do
+                              {:ok, response_text} ->
+                                response_text = sanitize_discord_llm_response(response_text)
 
                                 publish_synapse_progress(
-                                  Map.merge(progress_base, %{"step" => "preflight_started"})
+                                  Map.merge(progress_base, %{"step" => "finalizing_response"})
                                 )
 
-                                # Process LLM synchronously so Gnat.request gets the actual response
-                                context_sources =
-                                  resolve_context_sources(
-                                    default_context_sources() ++ ["time"],
-                                    text
-                                  )
+                                {recorded_reply, discord_reply} =
+                                  case parse_pi_go_delegate_directive(response_text) do
+                                    {:delegate, pi_prompt} ->
+                                      params = %{
+                                        "command" => "run",
+                                        "prompt" => pi_prompt,
+                                        "tenant_id" => tenant_id,
+                                        "user_id" => user_id,
+                                        "correlation_id" => UUID.uuid4(),
+                                        "discord_channel_id" => channel_id
+                                      }
 
-                                publish_synapse_progress(
-                                  Map.merge(progress_base, %{
-                                    "step" => "context_lookup_started",
-                                    "context_sources" => context_sources
-                                  })
+                                      ack =
+                                        case dispatch_pi_go_command(params) do
+                                          %{"status" => "accepted", "data" => data} ->
+                                            cid = Map.get(data, "correlation_id", "unknown")
+
+                                            "This Discord chat path cannot read or write your Mac directly. " <>
+                                              "I sent the work to pi-go instead (correlation_id=#{cid}). " <>
+                                              "You should get a pi-go completed or failed follow-up here when it finishes."
+
+                                          %{"status" => "error", "error" => err} ->
+                                            "I tried to hand off to pi-go but dispatch failed: #{inspect(err)}"
+
+                                          other ->
+                                            "Unexpected pi-go dispatch result: #{inspect(other)}"
+                                        end
+
+                                      {ack, ack}
+
+                                    :none ->
+                                      {response_text, response_text}
+                                  end
+
+                                BotArmySynapse.ConversationStore.record_exchange(
+                                  session_id,
+                                  text,
+                                  recorded_reply
                                 )
 
-                                context_data = gather_context(context_sources, text)
-                                context_summary = format_context_summary(context_data)
-
-                                publish_synapse_progress(
-                                  Map.merge(progress_base, %{
-                                    "step" => "context_lookup_completed",
-                                    "context_summary" => context_summary
-                                  })
+                                Logger.debug(
+                                  "Discord LLM response: #{String.slice(recorded_reply, 0, 100)}"
                                 )
 
-                                prompt =
-                                  build_discord_prompt(
-                                    text,
-                                    author_name,
-                                    command,
-                                    context_data,
-                                    conversation_history
-                                  )
-
-                                publish_synapse_progress(
-                                  Map.merge(progress_base, %{"step" => "llm_request_started"})
-                                )
-
-                                case call_llm_sync(prompt,
-                                       request_ctx: %{
-                                         tenant_id: tenant_id,
-                                         user_id: user_id,
-                                         run_id: run_id
-                                       }
-                                     ) do
-                                  {:ok, response_text} ->
-                                    response_text = sanitize_discord_llm_response(response_text)
-
-                                    publish_synapse_progress(
-                                      Map.merge(progress_base, %{"step" => "finalizing_response"})
-                                    )
-
-                                    {recorded_reply, discord_reply} =
-                                      case parse_pi_go_delegate_directive(response_text) do
-                                        {:delegate, pi_prompt} ->
-                                          params = %{
-                                            "command" => "run",
-                                            "prompt" => pi_prompt,
-                                            "tenant_id" => tenant_id,
-                                            "user_id" => user_id,
-                                            "correlation_id" => UUID.uuid4(),
-                                            "discord_channel_id" => channel_id
-                                          }
-
-                                          ack =
-                                            case dispatch_pi_go_command(params) do
-                                              %{"status" => "accepted", "data" => data} ->
-                                                cid = Map.get(data, "correlation_id", "unknown")
-
-                                                "This Discord chat path cannot read or write your Mac directly. " <>
-                                                  "I sent the work to pi-go instead (correlation_id=#{cid}). " <>
-                                                  "You should get a pi-go completed or failed follow-up here when it finishes."
-
-                                              %{"status" => "error", "error" => err} ->
-                                                "I tried to hand off to pi-go but dispatch failed: #{inspect(err)}"
-
-                                              other ->
-                                                "Unexpected pi-go dispatch result: #{inspect(other)}"
-                                            end
-
-                                          {ack, ack}
-
-                                        :none ->
-                                          {response_text, response_text}
-                                      end
-
-                                    BotArmySynapse.ConversationStore.record_exchange(
-                                      session_id,
-                                      text,
-                                      recorded_reply
-                                    )
-
-                                    Logger.debug(
-                                      "Discord LLM response: #{String.slice(recorded_reply, 0, 100)}"
-                                    )
-
-                                    if reply_to do
-                                      reply_discord(reply_to, discord_reply)
-                                    end
-
-                                    publish_synapse_progress(
-                                      Map.merge(progress_base, %{"step" => "completed"})
-                                    )
-
-                                    BotArmySynapse.RunStore.mark_status(run_id, "completed")
-
-                                  {:error, reason} ->
-                                    Logger.warning(
-                                      "LLM failed for Discord message: #{inspect(reason)}"
-                                    )
-
-                                    fallback =
-                                      build_discord_fallback_response(text, context_data, reason)
-
-                                    BotArmySynapse.ConversationStore.record_exchange(
-                                      session_id,
-                                      text,
-                                      fallback
-                                    )
-
-                                    if reply_to do
-                                      reply_discord(reply_to, fallback)
-                                    end
-
-                                    publish_synapse_progress(
-                                      Map.merge(progress_base, %{
-                                        "step" => "failed",
-                                        "error" => inspect(reason)
-                                      })
-                                    )
-
-                                    BotArmySynapse.RunStore.mark_status(run_id, "failed", %{
-                                      "error" => inspect(reason)
-                                    })
+                                if reply_to do
+                                  reply_discord(reply_to, discord_reply)
                                 end
+
+                                publish_synapse_progress(
+                                  Map.merge(progress_base, %{"step" => "completed"})
+                                )
+
+                                BotArmySynapse.RunStore.mark_status(run_id, "completed")
+
+                              {:error, reason} ->
+                                Logger.warning(
+                                  "LLM failed for Discord message: #{inspect(reason)}"
+                                )
+
+                                fallback =
+                                  build_discord_fallback_response(text, context_data, reason)
+
+                                BotArmySynapse.ConversationStore.record_exchange(
+                                  session_id,
+                                  text,
+                                  fallback
+                                )
+
+                                if reply_to do
+                                  reply_discord(reply_to, fallback)
+                                end
+
+                                publish_synapse_progress(
+                                  Map.merge(progress_base, %{
+                                    "step" => "failed",
+                                    "error" => inspect(reason)
+                                  })
+                                )
+
+                                BotArmySynapse.RunStore.mark_status(run_id, "failed", %{
+                                  "error" => inspect(reason)
+                                })
                             end
                         end
                     end
