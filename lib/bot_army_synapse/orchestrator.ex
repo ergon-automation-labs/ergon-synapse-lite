@@ -1280,10 +1280,7 @@ defmodule BotArmySynapse.Orchestrator do
 
                           :continue ->
                             # GeneralPurposeDiscord not available in lite mode
-                            :not_handled ->
-
-                              :continue ->
-                                run_id = UUID.uuid4()
+                            run_id = UUID.uuid4()
 
                                 progress_base = %{
                                   "run_id" => run_id,
@@ -4573,9 +4570,6 @@ defmodule BotArmySynapse.Orchestrator do
     final_mode =
       cond do
         stale_count >= 2 ->
-          "top3"
-
-        true ->
           "top3"
 
         overall_confidence < 0.55 ->
