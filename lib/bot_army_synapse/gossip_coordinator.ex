@@ -637,13 +637,10 @@ defmodule BotArmySynapse.GossipCoordinator do
     :ok
   end
 
-  def maybe_publish_tavern_full(event, _flavored) when is_map(event) do
-      nil ->
-        :ok
+  def maybe_publish_tavern_full(event, nil) when is_map(event), do: :ok
 
-      flavored ->
-        publish_tavern_nats(event, flavored)
-    end
+  def maybe_publish_tavern_full(event, flavored) when is_map(event) do
+    publish_tavern_nats(event, flavored)
   end
 
   @tavern_dedup_ttl_s 60
