@@ -21,8 +21,11 @@ defmodule BotArmySynapse.Application do
       {BotArmySynapse.ConversationStore, []},
       # Run memory - resumable run context keyed by run_id
       {BotArmySynapse.RunStore, []},
-      # Run retention - prune old persisted run records
-      {BotArmySynapse.RunRetentionScheduler, []},
+      # Run retention - prune old persisted run records.
+      # (RunRetentionScheduler lives in the private full-synapse repo;
+      # this public lite repo never carried the module, and an unguarded
+      # supervision child crashes boot with
+      # "BotArmySynapse.RunRetentionScheduler does not exist".)
       # Goals cache - GTD projects enriched with synapse metadata
       {BotArmySynapse.GoalStore, []},
       # Pulse listener - aggregates health from all bots
