@@ -27,7 +27,6 @@ defmodule BotArmySynapse.Application do
       # supervision child crashes boot with
       # "BotArmySynapse.RunRetentionScheduler does not exist".)
       # Goals cache - GTD projects enriched with synapse metadata
-      {BotArmySynapse.GoalStore, []},
       # Pulse listener - aggregates health from all bots
       {BotArmySynapse.PulseListener, []},
       # Event-driven hydration cache for fast cross-bot answers
