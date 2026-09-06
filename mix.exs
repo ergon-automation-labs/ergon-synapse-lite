@@ -4,11 +4,15 @@ defmodule BotArmySynapse.MixProject do
   def project do
     [
       app: :bot_army_synapse,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      default_release: :synapse_bot,
       releases: [
+        synapse_bot: [
+          applications: [bot_army_synapse: :permanent]
+        ],
         synapse: [
           applications: [bot_army_synapse: :permanent]
         ]
@@ -25,12 +29,9 @@ defmodule BotArmySynapse.MixProject do
 
   defp deps do
     [
-      {:bot_army_library_core,
-       git: "https://github.com/ergon-automation-labs/ergon-library-core.git", branch: "main"},
-      {:bot_army_library_runtime,
-       git: "https://github.com/ergon-automation-labs/ergon-library-runtime.git", branch: "main"},
-      {:bot_army_library_learning,
-       git: "https://github.com/ergon-automation-labs/ergon-library-learning.git", branch: "main"},
+      {:bot_army_library_core, path: "../bot_army_library_core", override: true},
+      {:bot_army_library_runtime, path: "../bot_army_library_runtime", override: true},
+      {:bot_army_library_learning, path: "../bot_army_library_learning", override: true},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, "~> 0.17"},
       {:jason, "~> 1.4"},
