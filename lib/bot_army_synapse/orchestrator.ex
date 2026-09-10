@@ -17,7 +17,7 @@ defmodule BotArmySynapse.Orchestrator do
   @llm_model_preferences ~w(auto fast powerful cheap)
   @daily_override_decisions ~w(accept snooze defer replace reorder dismiss)
 
-  alias BotArmySynapse.Context.{State, Time}
+  alias BotArmySynapse.Context.{Fleet, State, Time}
 
   @doc """
   Handle request/reply Daily Command recommendation lookup.
@@ -118,7 +118,7 @@ defmodule BotArmySynapse.Orchestrator do
           decision = Map.get(normalized_payload, "decision", "unknown")
           override_id = Map.get(enriched_payload, "override_event_id")
 
-          BotArmyLearning.OutcomeTracker.record(
+          BotArmyLibraryLearning.OutcomeTracker.record(
             override_id,
             "synapse.daily_recommendation",
             "user_feedback",

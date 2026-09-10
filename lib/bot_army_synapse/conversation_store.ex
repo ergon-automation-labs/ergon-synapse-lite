@@ -82,7 +82,7 @@ defmodule BotArmySynapse.ConversationStore do
       |> Keyword.put_new(:source, "synapse")
 
     Task.start(fn ->
-      _ = BotArmy.Memory.record_exchange(session_id, question, answer, memory_opts)
+      _ = BotArmyLibraryRuntime.Memory.record_exchange(session_id, question, answer, memory_opts)
       :ok
     end)
   end
@@ -93,7 +93,7 @@ defmodule BotArmySynapse.ConversationStore do
       |> Keyword.put(:tenant_id, tenant_id)
       |> Keyword.put(:limit, @max_history_per_session)
 
-    BotArmy.Memory.list(session_id, memory_opts)
+    BotArmyLibraryRuntime.Memory.list(session_id, memory_opts)
   end
 
   defp clear_persisted(session_id, tenant_id, opts) do
@@ -103,7 +103,7 @@ defmodule BotArmySynapse.ConversationStore do
       |> Keyword.put(:kind, "exchange")
 
     Task.start(fn ->
-      _ = BotArmy.Memory.clear(session_id, memory_opts)
+      _ = BotArmyLibraryRuntime.Memory.clear(session_id, memory_opts)
       :ok
     end)
   end
