@@ -88,7 +88,7 @@ defmodule BotArmySynapse.Context.Fleet do
   end
 
   defp list_registry_bots do
-    case BotArmyRuntime.Registry.list_bots() do
+    case BotArmyLibraryRuntime.Registry.list_bots() do
       {:ok, bots} when is_list(bots) -> bots
       _ -> []
     end
@@ -110,7 +110,7 @@ defmodule BotArmySynapse.Context.Fleet do
 
   defp stale_entry(_bot, _now), do: nil
 
-  defp known_bots(list_bots_fn \\ &BotArmyRuntime.Registry.list_bots/0) do
+  defp known_bots(list_bots_fn \\ &BotArmyLibraryRuntime.Registry.list_bots/0) do
     case list_bots_fn.() do
       {:ok, bots} when is_list(bots) ->
         names =

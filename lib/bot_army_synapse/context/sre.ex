@@ -8,7 +8,7 @@ defmodule BotArmySynapse.Context.SRE do
   require Logger
 
   def get_context do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       {:ok, conn} ->
         case Gnat.request(
                conn,

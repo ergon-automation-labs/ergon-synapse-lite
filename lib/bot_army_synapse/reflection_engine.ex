@@ -212,7 +212,7 @@ defmodule BotArmySynapse.ReflectionEngine do
       "source" => "bot_army_synapse",
       "schema_version" => "1.0",
       "event" => "synapse.reflection.mismatch",
-      "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+      "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
       "payload" => %{
         "run_id" => mismatches.run_id,
         "question" => mismatches.question,
@@ -225,7 +225,7 @@ defmodule BotArmySynapse.ReflectionEngine do
     }
 
     try do
-      case BotArmyCore.NATS.publish("bot_army.synapse.reflection.mismatch", event) do
+      case BotArmyLibraryCore.NATS.publish("bot_army.synapse.reflection.mismatch", event) do
         :ok ->
           log_mismatch_published(mismatches)
 
@@ -258,7 +258,7 @@ defmodule BotArmySynapse.ReflectionEngine do
       "event_id" => Ecto.UUID.generate(),
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "source" => "bot_army_synapse",
-      "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+      "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
       "user_id" => "system",
       "payload" => %{
         "title" => "Synapse reflection mismatch detected",
@@ -273,7 +273,7 @@ defmodule BotArmySynapse.ReflectionEngine do
     }
 
     try do
-      case BotArmyRuntime.NATS.Publisher.publish("gtd.task.create", envelope) do
+      case BotArmyLibraryRuntime.NATS.Publisher.publish("gtd.task.create", envelope) do
         {:ok, _} ->
           Logger.debug(
             "[ReflectionEngine] Created GTD task for mismatch run=#{mismatches.run_id}"
@@ -298,7 +298,7 @@ defmodule BotArmySynapse.ReflectionEngine do
       "total_count" => stats.total_count
     }
 
-    BotArmyRuntime.NATS.Publisher.publish(@obs_source_pruned, payload)
+    BotArmyLibraryRuntime.NATS.Publisher.publish(@obs_source_pruned, payload)
     |> case do
       :ok -> :ok
       {:ok, _} -> :ok

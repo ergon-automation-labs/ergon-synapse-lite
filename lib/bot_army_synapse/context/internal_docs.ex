@@ -77,7 +77,7 @@ defmodule BotArmySynapse.Context.InternalDocs do
     timeout = Application.get_env(:bot_army_synapse, :internal_docs_timeout, 4_500)
     t_query_start = System.monotonic_time(:millisecond)
 
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, data} <- request_with_fallbacks(conn, question, timeout) do
       t_after_query = System.monotonic_time(:millisecond)
 

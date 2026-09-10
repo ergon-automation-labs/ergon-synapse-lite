@@ -1,4 +1,4 @@
-.PHONY: help deps test credo dialyzer coverage check format clean release publish-release \
+.PHONY: help deps test credo dialyzer coverage check format clean release publish-release \ setup-hooks
 	watch-pi-go-trigger-decisions watch-pi-go-trigger-skips watch-pi-go-events pi-go-status pi-go-dashboard \
 	smoke-factory-decision-loop push-and-publish deploy-prod \
 	suggestion-report suggestion-watch \
@@ -38,6 +38,10 @@ help:
 
 deps:
 	$(MIX) deps.get
+
+setup-hooks:
+	@git config core.hooksPath git-hooks
+	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
 
 test:
 	@echo "Running test suite (37 test files)..."

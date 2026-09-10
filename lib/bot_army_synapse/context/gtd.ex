@@ -40,7 +40,7 @@ defmodule BotArmySynapse.Context.GTD do
   defp fallback_to_live_tasks(tasks), do: tasks
 
   defp fetch_live_tasks do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, response} <-
            Gnat.request(
              conn,

@@ -60,7 +60,7 @@ defmodule BotArmySynapse.SynapseProgressHandler do
         "thread_id" => channel_id
       })
 
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       {:ok, conn} ->
         Gnat.pub(conn, subject, body)
 

@@ -21,7 +21,7 @@ defmodule BotArmySynapse.NATS.Consumer do
   use GenServer
   require Logger
 
-  alias BotArmyRuntime.NATS.Reply
+  alias BotArmyLibraryRuntime.NATS.Reply
   @registry_heartbeat_ms 20_000
   @version Mix.Project.config()[:version]
 
@@ -131,9 +131,9 @@ defmodule BotArmySynapse.NATS.Consumer do
 
   @impl true
   def handle_continue(:connect, state) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       {:ok, conn} ->
-        BotArmyRuntime.NATS.Connection.subscribe_to_status()
+        BotArmyLibraryRuntime.NATS.Connection.subscribe_to_status()
         subscribe_to_topics(conn, state)
 
       {:error, _reason} ->
@@ -201,7 +201,7 @@ defmodule BotArmySynapse.NATS.Consumer do
 
     case subs do
       subs when length(subs) == length(subjects) ->
-        BotArmyRuntime.Registry.register("synapse", @subjects, @version)
+        BotArmyLibraryRuntime.Registry.register("synapse", @subjects, @version)
         Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
         {:noreply, %{state | subscriptions: subs, registry_registered?: true}}
 
@@ -225,7 +225,7 @@ defmodule BotArmySynapse.NATS.Consumer do
 
   @impl true
   def handle_info({:msg, msg}, state) do
-    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers, []), fn ->
+    BotArmyLibraryRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers, []), fn ->
       Logger.debug("NATS received NATS message on subject: #{msg.topic}")
 
       cond do
@@ -275,7 +275,7 @@ defmodule BotArmySynapse.NATS.Consumer do
           Logger.warning("Subject #{msg.topic} not handled in synapse-lite mode")
 
         true ->
-          case BotArmyCore.NATS.Decoder.decode(msg.body) do
+          case BotArmyLibraryCore.NATS.Decoder.decode(msg.body) do
             {:ok, decoded} ->
               # Include reply_to from NATS message for request/reply patterns
               message_with_reply = Map.put(decoded, "reply_to", msg.reply_to)
@@ -312,7 +312,7 @@ defmodule BotArmySynapse.NATS.Consumer do
   @impl true
   def handle_info(:registry_heartbeat, state) do
     if state.registry_registered? do
-      BotArmyRuntime.Registry.register("synapse", @subjects, @version)
+      BotArmyLibraryRuntime.Registry.register("synapse", @subjects, @version)
       BotArmySynapse.GossipCoordinator.maybe_vote_on_heartbeat()
       Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
     end
@@ -452,7 +452,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         events = BotArmySynapse.MemoryBroker.recall(tenant_id, user_id, limit)
 
         if msg.reply_to do
-          reply_nats(msg.reply_to, BotArmyRuntime.NATS.Reply.ok(%{"events" => events}))
+          reply_nats(msg.reply_to, BotArmyLibraryRuntime.NATS.Reply.ok(%{"events" => events}))
         end
 
       {:error, reason} ->
@@ -461,7 +461,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         if msg.reply_to do
           reply_nats(
             msg.reply_to,
-            BotArmyRuntime.NATS.Reply.error("decode_failed", :decode_error)
+            BotArmyLibraryRuntime.NATS.Reply.error("decode_failed", :decode_error)
           )
         end
     end
@@ -477,7 +477,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         summary = BotArmySynapse.MemoryBroker.summary(tenant_id, user_id)
 
         if msg.reply_to do
-          reply_nats(msg.reply_to, BotArmyRuntime.NATS.Reply.ok(summary))
+          reply_nats(msg.reply_to, BotArmyLibraryRuntime.NATS.Reply.ok(summary))
         end
 
       {:error, reason} ->
@@ -486,7 +486,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         if msg.reply_to do
           reply_nats(
             msg.reply_to,
-            BotArmyRuntime.NATS.Reply.error("decode_failed", :decode_error)
+            BotArmyLibraryRuntime.NATS.Reply.error("decode_failed", :decode_error)
           )
         end
     end
@@ -628,7 +628,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         if msg.reply_to do
           reply_nats(
             msg.reply_to,
-            BotArmyRuntime.NATS.Reply.error("not_available_in_lite_mode", :not_implemented)
+            BotArmyLibraryRuntime.NATS.Reply.error("not_available_in_lite_mode", :not_implemented)
           )
         end
 
@@ -638,7 +638,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         if msg.reply_to do
           reply_nats(
             msg.reply_to,
-            BotArmyRuntime.NATS.Reply.error("unknown subject", :unknown_subject)
+            BotArmyLibraryRuntime.NATS.Reply.error("unknown subject", :unknown_subject)
           )
         end
     end
@@ -658,7 +658,7 @@ defmodule BotArmySynapse.NATS.Consumer do
         )
 
         if msg.reply_to do
-          reply_nats(msg.reply_to, BotArmyRuntime.NATS.Reply.ok(%{"recorded" => true}))
+          reply_nats(msg.reply_to, BotArmyLibraryRuntime.NATS.Reply.ok(%{"recorded" => true}))
         end
 
       {:error, reason} ->
@@ -667,14 +667,14 @@ defmodule BotArmySynapse.NATS.Consumer do
         if msg.reply_to do
           reply_nats(
             msg.reply_to,
-            BotArmyRuntime.NATS.Reply.error("decode_failed", :decode_error)
+            BotArmyLibraryRuntime.NATS.Reply.error("decode_failed", :decode_error)
           )
         end
     end
   end
 
   defp handle_task_create(msg) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000),
          {:ok, decoded} <- Jason.decode(msg.body) do
       payload = Map.get(decoded, "payload", decoded)
       title = Map.get(payload, "title", "Untitled task")
@@ -733,7 +733,7 @@ defmodule BotArmySynapse.NATS.Consumer do
   end
 
   defp handle_task_list(msg) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       case Gnat.request(conn, "gtd.task.list", Jason.encode!(%{}), receive_timeout: 5000) do
         {:ok, response} ->
           if msg.reply_to do
@@ -976,7 +976,7 @@ defmodule BotArmySynapse.NATS.Consumer do
   end
 
   defp fetch_task_counts_by_project_id do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000),
          {:ok, tasks} <- fetch_all_tasks(conn, 500, 0, []) do
       count_tasks_by_project(tasks)
     else
@@ -1099,8 +1099,8 @@ defmodule BotArmySynapse.NATS.Consumer do
   end
 
   defp reply_nats(reply_to, body) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
-      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
+      headers = BotArmyLibraryRuntime.Tracing.inject_trace_context([])
       Gnat.pub(conn, reply_to, body, headers: headers)
     end
   end
@@ -1135,7 +1135,7 @@ defmodule BotArmySynapse.NATS.Consumer do
   defp send_discord_reply(reply_to, text) do
     response = Jason.encode!(%{"response" => text})
 
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       Gnat.pub(conn, reply_to, response)
     end
   end

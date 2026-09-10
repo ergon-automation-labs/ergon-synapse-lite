@@ -31,10 +31,8 @@ defmodule BotArmySynapse do
   - `bot_army.claude.trigger.brain` - Trigger Claude sessions via DecisionEngine
   """
 
-  @version "0.4.2"
-
   def version do
-    @version
+    Application.spec(:bot_army_synapse, :vsn) |> to_string()
   end
 
   @doc """
@@ -47,7 +45,7 @@ defmodule BotArmySynapse do
   and in the payload (for handlers that read it from payload).
   """
   def build_envelope(event, payload \\ %{}) do
-    tenant_id = BotArmyRuntime.Tenant.default_tenant_id()
+    tenant_id = BotArmyLibraryRuntime.Tenant.default_tenant_id()
 
     %{
       "event_id" => UUID.uuid4(),

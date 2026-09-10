@@ -12,7 +12,7 @@ defmodule BotArmySynapse.Orchestrator do
 
   require Logger
 
-  alias BotArmyRuntime.NATS.Reply
+  alias BotArmyLibraryRuntime.NATS.Reply
   @llm_request_types ~w(chat analysis sentiment explain)
   @llm_model_preferences ~w(auto fast powerful cheap)
   @daily_override_decisions ~w(accept snooze defer replace reorder dismiss)
@@ -379,7 +379,7 @@ defmodule BotArmySynapse.Orchestrator do
 
   @doc false
   def dependency_preflight do
-    case GenServer.whereis(BotArmyRuntime.NATS.Connection) do
+    case GenServer.whereis(BotArmyLibraryRuntime.NATS.Connection) do
       nil ->
         %{
           "ready" => false,
@@ -388,7 +388,7 @@ defmodule BotArmySynapse.Orchestrator do
         }
 
       _pid ->
-        case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 2_000) do
+        case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 2_000) do
           {:ok, _conn} ->
             %{
               "ready" => true,
@@ -654,7 +654,7 @@ defmodule BotArmySynapse.Orchestrator do
 
     # Reply immediately with context, then call LLM asynchronously
     if reply_to do
-      case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+      case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
         {:ok, conn} ->
           reply_json =
             Jason.encode!(%{
@@ -679,7 +679,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp call_llm_async(event_data, context_data, session_id, question, run_id, tenant_id, user_id) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       {:ok, conn} ->
         json = Jason.encode!(event_data)
 
@@ -908,7 +908,7 @@ defmodule BotArmySynapse.Orchestrator do
 
     case Jason.encode(response) do
       {:ok, body} ->
-        with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+        with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
           Gnat.pub(conn, reply_to, body)
         end
 
@@ -918,7 +918,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp publish_nats(subject, event_data) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000),
          {:ok, body} <- Jason.encode(event_data) do
       Gnat.pub(conn, subject, body)
       :ok
@@ -1169,7 +1169,7 @@ defmodule BotArmySynapse.Orchestrator do
     channel_id = Map.get(message, "channel_id")
     command = extract_command(subject)
     user_id = Map.get(message, "user_id")
-    tenant_id = Map.get(message, "tenant_id", BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Map.get(message, "tenant_id", BotArmyLibraryRuntime.Tenant.default_tenant_id())
 
     session_id =
       Map.get(message, "session_id") || Map.get(message, "channel_id") || "discord_default"
@@ -1668,7 +1668,7 @@ defmodule BotArmySynapse.Orchestrator do
   defp publish_synapse_progress(payload) when is_map(payload) do
     payload = enrich_progress_payload(payload)
 
-    BotArmyCore.NATS.publish("events.synapse.run.progress", %{
+    BotArmyLibraryCore.NATS.publish("events.synapse.run.progress", %{
       "event_id" => UUID.uuid4(),
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "source" => "bot_army_synapse",
@@ -2663,7 +2663,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp skills_runtime_status(tenant_id, user_id) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, json} <-
            Jason.encode(%{
              "event" => "bot.army.skills.command.__healthcheck__",
@@ -3258,7 +3258,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp invoke_skill_via_llm_proxy(skill_slug, payload_text, user_id, tenant_id) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       timeout_ms = 95_000
 
       request = %{
@@ -3305,7 +3305,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp invoke_skill_direct(skill_slug, payload_text, user_id, tenant_id) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       envelope = %{
         "event" => "bot.army.skills.command.#{skill_slug}",
         "event_id" => UUID.uuid4(),
@@ -3538,8 +3538,8 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp request_llm_sync(prompt, request_ctx, timeout_ms) do
-    conn = GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000)
-    tenant_id = Map.get(request_ctx, :tenant_id) || BotArmyRuntime.Tenant.default_tenant_id()
+    conn = GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000)
+    tenant_id = Map.get(request_ctx, :tenant_id) || BotArmyLibraryRuntime.Tenant.default_tenant_id()
     user_id = Map.get(request_ctx, :user_id)
     run_id = Map.get(request_ctx, :run_id)
 
@@ -3609,7 +3609,7 @@ defmodule BotArmySynapse.Orchestrator do
   defp reply_discord(reply_to, text) do
     response = Jason.encode!(%{"response" => text})
 
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       Gnat.pub(conn, reply_to, response)
     end
   end
@@ -4088,8 +4088,8 @@ defmodule BotArmySynapse.Orchestrator do
 
   defp reply_nats_json(reply_to, payload) do
     with {:ok, json} <- Jason.encode(payload),
-         {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
-      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+         {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
+      headers = BotArmyLibraryRuntime.Tracing.inject_trace_context([])
       Gnat.pub(conn, reply_to, json, headers: headers)
     else
       {:error, reason} ->
@@ -4098,7 +4098,7 @@ defmodule BotArmySynapse.Orchestrator do
   end
 
   defp publish_analyze_result(event_id, response, status) do
-    BotArmyCore.NATS.publish("events.synapse.claude.result.#{event_id}", %{
+    BotArmyLibraryCore.NATS.publish("events.synapse.claude.result.#{event_id}", %{
       "status" => Atom.to_string(status),
       "response" => response,
       "event_id" => event_id,
@@ -4170,7 +4170,7 @@ defmodule BotArmySynapse.Orchestrator do
 
     if reply_to do
       with {:ok, conn} <-
-             GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+             GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
            {:ok, json} <- Jason.encode(response) do
         Gnat.pub(conn, reply_to, json)
       end
@@ -4431,7 +4431,7 @@ defmodule BotArmySynapse.Orchestrator do
     prompt = Map.get(params, "prompt", "")
     task_id = Map.get(params, "task_id")
     correlation_id = Map.get(params, "correlation_id", UUID.uuid4())
-    tenant_id = Map.get(params, "tenant_id", BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Map.get(params, "tenant_id", BotArmyLibraryRuntime.Tenant.default_tenant_id())
     user_id = Map.get(params, "user_id")
 
     payload =
@@ -4486,12 +4486,12 @@ defmodule BotArmySynapse.Orchestrator do
   defp request_nats(subject, payload, timeout_ms)
        when is_integer(timeout_ms) and timeout_ms > 0 do
     with {:ok, conn} <-
-           GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+           GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, json} <- Jason.encode(payload),
          {:ok, response} <-
            Gnat.request(conn, subject, json,
              receive_timeout: timeout_ms,
-             headers: BotArmyRuntime.Tracing.inject_trace_context([])
+             headers: BotArmyLibraryRuntime.Tracing.inject_trace_context([])
            ) do
       {:ok, response.body}
     end
@@ -4787,7 +4787,7 @@ defmodule BotArmySynapse.Orchestrator do
     tenant_id =
       Map.get(payload || %{}, "tenant_id") ||
         Map.get(message || %{}, "tenant_id") ||
-        BotArmyRuntime.Tenant.default_tenant_id()
+        BotArmyLibraryRuntime.Tenant.default_tenant_id()
 
     user_id =
       Map.get(payload || %{}, "user_id") ||
@@ -4816,8 +4816,8 @@ defmodule BotArmySynapse.Orchestrator do
       }
   end
 
-  defp normalize_tenant_id(nil), do: BotArmyRuntime.Tenant.default_tenant_id()
-  defp normalize_tenant_id(""), do: BotArmyRuntime.Tenant.default_tenant_id()
+  defp normalize_tenant_id(nil), do: BotArmyLibraryRuntime.Tenant.default_tenant_id()
+  defp normalize_tenant_id(""), do: BotArmyLibraryRuntime.Tenant.default_tenant_id()
   defp normalize_tenant_id(tenant_id), do: tenant_id
 
   @doc false

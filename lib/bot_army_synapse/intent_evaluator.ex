@@ -5,11 +5,11 @@ defmodule BotArmySynapse.IntentEvaluator do
 
   require Logger
 
-  alias BotArmyRuntime.Intent.AccumulatedContext
-  alias BotArmyRuntime.Intent.ActionHandler
-  alias BotArmyRuntime.Intent.DeferHandler
-  alias BotArmyRuntime.Intent.Publisher
-  alias BotArmyRuntime.Intent.ThresholdModel
+  alias BotArmyLibraryRuntime.Intent.AccumulatedContext
+  alias BotArmyLibraryRuntime.Intent.ActionHandler
+  alias BotArmyLibraryRuntime.Intent.DeferHandler
+  alias BotArmyLibraryRuntime.Intent.Publisher
+  alias BotArmyLibraryRuntime.Intent.ThresholdModel
 
   @bot_name "synapse"
   @evaluate_interval_ms 5 * 60 * 1000
@@ -188,7 +188,7 @@ defmodule BotArmySynapse.IntentEvaluator do
 
   @doc false
   def handle_proactive_message_action(bot_name, _action, _intent_id, details, _endorsements) do
-    BotArmyRuntime.NATS.Publisher.publish("notification.route.request", %{
+    BotArmyLibraryRuntime.NATS.Publisher.publish("notification.route.request", %{
       "event_id" => UUID.uuid4(),
       "triggered_by" => bot_name,
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
@@ -243,7 +243,7 @@ defmodule BotArmySynapse.IntentEvaluator do
       end
 
     if message do
-      BotArmyRuntime.NATS.Publisher.publish("notification.route.request", %{
+      BotArmyLibraryRuntime.NATS.Publisher.publish("notification.route.request", %{
         "event_id" => UUID.uuid4(),
         "triggered_by" => bot_name,
         "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
@@ -332,7 +332,7 @@ defmodule BotArmySynapse.IntentEvaluator do
     }
 
     Task.start(fn ->
-      BotArmyRuntime.NATS.Publisher.publish("events.bot_army.intent.aborted", event)
+      BotArmyLibraryRuntime.NATS.Publisher.publish("events.bot_army.intent.aborted", event)
     end)
   end
 

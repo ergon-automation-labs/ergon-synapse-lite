@@ -2,14 +2,14 @@ defmodule BotArmySynapse.Release do
   @moduledoc """
   Release tasks for Synapse.
 
-  Migrations are run via the shared BotArmyRuntime.Ecto.MigrationRunner:
+  Migrations are run via the shared BotArmyLibraryRuntime.Ecto.MigrationRunner:
 
       /path/to/synapse/bin/synapse eval 'BotArmySynapse.Release.migrate()'
 
   Called from Salt during bot deployment, before the bot starts.
   """
 
-  alias BotArmyRuntime.Ecto.MigrationRunner
+  alias BotArmyLibraryRuntime.Ecto.MigrationRunner
 
   @app :bot_army_synapse
 

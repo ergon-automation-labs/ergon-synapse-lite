@@ -141,7 +141,7 @@ defmodule BotArmySynapse.GossipScheduler do
         "schema_version" => "1.0",
         "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
         "source" => "bot_army_synapse",
-        "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+        "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
         "conversation_id" => UUID.uuid4(),
         "payload" => %{
           "from_bot" => "synapse_bot",
@@ -152,7 +152,7 @@ defmodule BotArmySynapse.GossipScheduler do
         }
       }
 
-      _ = BotArmyRuntime.NATS.Publisher.publish("gossip.social.invite", message)
+      _ = BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.social.invite", message)
       Logger.info("[GossipScheduler] Emitted gossip.social.invite adaptive_score=#{score}")
     end
   end
@@ -168,7 +168,7 @@ defmodule BotArmySynapse.GossipScheduler do
         "schema_version" => "1.0",
         "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
         "source" => "bot_army_synapse",
-        "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+        "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
         "conversation_id" => poll_id,
         "payload" => %{
           "poll_id" => poll_id,
@@ -181,14 +181,14 @@ defmodule BotArmySynapse.GossipScheduler do
         }
       }
 
-      _ = BotArmyRuntime.NATS.Publisher.publish("gossip.poll.broadcast", message)
+      _ = BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.poll.broadcast", message)
       Logger.info("[GossipScheduler] Emitted gossip.poll.broadcast poll_id=#{poll_id}")
     end
   end
 
   defp build_poll_payload(context_data) do
     affinity =
-      BotArmyRuntime.GossipPollAffinity.snapshot(
+      BotArmyLibraryRuntime.GossipPollAffinity.snapshot(
         Map.get(context_data, :gtd, []),
         Map.get(context_data, :goals, [])
       )
@@ -264,7 +264,7 @@ defmodule BotArmySynapse.GossipScheduler do
       "schema_version" => "1.0",
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "source" => "bot_army_synapse",
-      "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+      "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
       "conversation_id" => UUID.uuid4(),
       "payload" => %{
         "text" => text,
@@ -273,7 +273,7 @@ defmodule BotArmySynapse.GossipScheduler do
       }
     }
 
-    BotArmyRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
+    BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
   end
 
   defp format_context_simple(context_data) do

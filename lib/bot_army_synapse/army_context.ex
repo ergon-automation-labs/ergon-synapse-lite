@@ -51,7 +51,7 @@ defmodule BotArmySynapse.ArmyContext do
   def publish_goal_context(goals_map) when is_map(goals_map) do
     try do
       with {:ok, conn} <-
-             GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 1000) do
+             GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 1000) do
         at_risk_goals = filter_at_risk_goals(goals_map)
 
         context_payload = %{

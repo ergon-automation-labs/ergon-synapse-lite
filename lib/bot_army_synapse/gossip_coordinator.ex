@@ -178,7 +178,7 @@ defmodule BotArmySynapse.GossipCoordinator do
     poll_id = Map.get(payload, "poll_id")
     choices = Map.get(payload, "choices", %{})
     budget = Map.get(payload, "vote_budget_per_bot", 3)
-    tenant_id = Map.get(payload, "tenant_id", BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Map.get(payload, "tenant_id", BotArmyLibraryRuntime.Tenant.default_tenant_id())
 
     if is_binary(poll_id) and poll_id != "" do
       Logger.info("[GossipCoordinator] GTD poll broadcast poll_id=#{poll_id}")
@@ -224,7 +224,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       {:noreply, state}
     else
       spawn(fn ->
-        case BotArmyRuntime.Registry.list_bots() do
+        case BotArmyLibraryRuntime.Registry.list_bots() do
           {:ok, bots} ->
             active = Enum.filter(bots, fn b -> b["status"] == "active" end)
             stale = Enum.filter(bots, fn b -> b["status"] == "stale" end)
@@ -269,7 +269,7 @@ defmodule BotArmySynapse.GossipCoordinator do
               }
             }
 
-            BotArmyRuntime.NATS.Publisher.publish("gossip.intent.proposed", proposed)
+            BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.intent.proposed", proposed)
             maybe_publish_tavern(proposed)
 
             target_bots = Map.get(proposed["payload"], "target_bots", [])
@@ -302,7 +302,7 @@ defmodule BotArmySynapse.GossipCoordinator do
                 }
               }
 
-              BotArmyRuntime.NATS.Publisher.publish("gossip.intent.answer", answer)
+              BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.intent.answer", answer)
             end)
 
           {:error, _} ->
@@ -374,7 +374,7 @@ defmodule BotArmySynapse.GossipCoordinator do
     }
 
     Logger.info("[GossipCoordinator] resolved intent_key=#{intent_key} decision=#{decision}")
-    BotArmyRuntime.NATS.Publisher.publish("gossip.intent.resolved", resolved)
+    BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.intent.resolved", resolved)
     maybe_publish_tavern(resolved)
   end
 
@@ -397,7 +397,7 @@ defmodule BotArmySynapse.GossipCoordinator do
 
       if subject != "" do
         spawn(fn ->
-          case BotArmyRuntime.NATS.Publisher.request(
+          case BotArmyLibraryRuntime.NATS.Publisher.request(
                  subject,
                  %{"tenant_id" => tenant_id, "schema_version" => "1.0", "limit" => 1},
                  timeout_ms: 5_000
@@ -490,7 +490,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       }
     }
 
-    BotArmyRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
+    BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
   end
 
   defp maybe_vote_on_gtd_poll(state) do
@@ -504,7 +504,7 @@ defmodule BotArmySynapse.GossipCoordinator do
         else
           %{choices: choices, budget: budget, tenant_id: tenant_id} = state.active_gtd_poll
 
-          allocations = BotArmyRuntime.GtdPollAllocator.allocate(choices, :synapse, budget)
+          allocations = BotArmyLibraryRuntime.GtdPollAllocator.allocate(choices, :synapse, budget)
 
           if allocations != [] do
             submit_gtd_vote(poll_id, allocations, tenant_id)
@@ -524,7 +524,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       "tenant_id" => tenant_id
     }
 
-    case BotArmyRuntime.NATS.Publisher.request("gtd.poll.vote.submit", payload, timeout_ms: 5_000) do
+    case BotArmyLibraryRuntime.NATS.Publisher.request("gtd.poll.vote.submit", payload, timeout_ms: 5_000) do
       {:ok, _reply} ->
         Logger.info("[GossipCoordinator] submitted GTD poll vote poll_id=#{poll_id}")
 
@@ -555,7 +555,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       "schema_version" => "1.0",
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "source" => "bot_army_synapse",
-      "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+      "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
       "conversation_id" => poll_id,
       "payload" => %{
         "poll_id" => poll_id,
@@ -566,7 +566,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       }
     }
 
-    BotArmyRuntime.NATS.Publisher.publish("gossip.poll.vote", vote_message)
+    BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.poll.vote", vote_message)
   end
 
   defp suggest_vote(topic, options, context_snapshot) do
@@ -596,7 +596,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       "schema_version" => "1.0",
       "timestamp" => DateTime.utc_now() |> DateTime.to_iso8601(),
       "source" => "bot_army_synapse",
-      "tenant_id" => BotArmyRuntime.Tenant.default_tenant_id(),
+      "tenant_id" => BotArmyLibraryRuntime.Tenant.default_tenant_id(),
       "conversation_id" => poll.poll_id,
       "payload" => %{
         "poll_id" => poll.poll_id,
@@ -606,7 +606,7 @@ defmodule BotArmySynapse.GossipCoordinator do
       }
     }
 
-    BotArmyRuntime.NATS.Publisher.publish("gossip.poll.resolved", resolved)
+    BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.poll.resolved", resolved)
     maybe_publish_tavern(resolved)
   end
 
@@ -626,7 +626,7 @@ defmodule BotArmySynapse.GossipCoordinator do
     subject = "discord.relay.#{channel_id}"
     payload = Jason.encode!(Map.merge(%{"content" => text}, Map.new(opts)))
 
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       {:ok, conn} -> Gnat.pub(conn, subject, payload)
       {:error, _reason} -> :ok
     end
@@ -681,7 +681,7 @@ defmodule BotArmySynapse.GossipCoordinator do
           }
         }
 
-        BotArmyRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
+        BotArmyLibraryRuntime.NATS.Publisher.publish("gossip.tavern.narrated", payload)
     end
   end
 
@@ -707,7 +707,7 @@ defmodule BotArmySynapse.GossipCoordinator do
   end
 
   defp choose_priority_vote(options, context_snapshot) do
-    BotArmyRuntime.GossipPollAffinity.choose_priority_vote(
+    BotArmyLibraryRuntime.GossipPollAffinity.choose_priority_vote(
       options,
       context_snapshot,
       :synapse,

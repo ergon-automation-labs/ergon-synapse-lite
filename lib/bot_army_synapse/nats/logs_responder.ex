@@ -19,7 +19,7 @@ defmodule BotArmySynapse.NATS.LogsResponder do
   use GenServer
   require Logger
 
-  alias BotArmyRuntime.NATS.Reply
+  alias BotArmyLibraryRuntime.NATS.Reply
   alias BotArmySynapse.Stores.KnowledgeStore
 
   @reconnect_delay_ms 5000
@@ -42,13 +42,13 @@ defmodule BotArmySynapse.NATS.LogsResponder do
 
   @impl true
   def handle_continue(:connect, state) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
       {:ok, conn} ->
-        BotArmyRuntime.NATS.Connection.subscribe_to_status()
+        BotArmyLibraryRuntime.NATS.Connection.subscribe_to_status()
         Logger.info("[LogsResponder] Connected to NATS, subscribing to log topics")
 
         subscriptions = setup_subscriptions(conn)
-        BotArmyRuntime.Registry.register("logs_responder", @subjects, @version)
+        BotArmyLibraryRuntime.Registry.register("logs_responder", @subjects, @version)
 
         {:noreply, %{state | subscriptions: subscriptions, conn: conn}}
 
@@ -84,7 +84,7 @@ defmodule BotArmySynapse.NATS.LogsResponder do
 
   @impl true
   def handle_info({:msg, msg}, state) do
-    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
+    BotArmyLibraryRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers), fn ->
       Logger.debug("[LogsResponder] Received NATS message on subject: #{msg.topic}")
 
       case msg.topic do
@@ -157,8 +157,8 @@ defmodule BotArmySynapse.NATS.LogsResponder do
   defp reply(%{reply_to: nil}, _body), do: :ok
 
   defp reply(%{reply_to: reply_to}, body) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5000) do
-      headers = BotArmyRuntime.Tracing.inject_trace_context([])
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5000) do
+      headers = BotArmyLibraryRuntime.Tracing.inject_trace_context([])
 
       payload =
         cond do

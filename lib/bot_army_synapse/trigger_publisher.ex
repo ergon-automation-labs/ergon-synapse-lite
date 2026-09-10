@@ -44,7 +44,7 @@ defmodule BotArmySynapse.TriggerPublisher do
 
     subject = "bot_army.claude.trigger.brain"
 
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000),
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000),
          {:ok, json} <- Jason.encode(envelope) do
       :ok = Gnat.pub(conn, subject, json)
 

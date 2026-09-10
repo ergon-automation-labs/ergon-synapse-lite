@@ -15,17 +15,17 @@ defmodule BotArmySynapse.ConversationStore do
   end
 
   def record_exchange(session_id, question, answer, opts \\ []) do
-    tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Keyword.get(opts, :tenant_id, BotArmyLibraryRuntime.Tenant.default_tenant_id())
     GenServer.cast(__MODULE__, {:record, session_id, question, answer, tenant_id, opts})
   end
 
   def get_history(session_id, opts \\ []) do
-    tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Keyword.get(opts, :tenant_id, BotArmyLibraryRuntime.Tenant.default_tenant_id())
     GenServer.call(__MODULE__, {:get_history, session_id, tenant_id, opts})
   end
 
   def clear_history(session_id, opts \\ []) do
-    tenant_id = Keyword.get(opts, :tenant_id, BotArmyRuntime.Tenant.default_tenant_id())
+    tenant_id = Keyword.get(opts, :tenant_id, BotArmyLibraryRuntime.Tenant.default_tenant_id())
     GenServer.cast(__MODULE__, {:clear, session_id, tenant_id, opts})
   end
 
