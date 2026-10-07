@@ -1,10 +1,8 @@
-.PHONY: help deps test credo dialyzer coverage check format clean release publish-release \ setup-hooks
+.PHONY: help deps test dialyzer coverage check format clean release publish-release \ _compile-impl
 	watch-pi-go-trigger-decisions watch-pi-go-trigger-skips watch-pi-go-events pi-go-status pi-go-dashboard \
 	smoke-factory-decision-loop push-and-publish deploy-prod \
 	suggestion-report suggestion-watch \
 	repo-map repo-map-check
-
-MIX ?= /Users/abby/.local/share/mise/shims/mix
 
 NATS_BOX_IMAGE := natsio/nats-box:latest
 NATS_URL := nats://$${NATS_HOST:-host.docker.internal}:$${NATS_PORT:-4222}
@@ -39,18 +37,20 @@ help:
 deps:
 	$(MIX) deps.get
 
-setup-hooks:
-	@git config core.hooksPath git-hooks
-	@echo "✓ Git hooks installed (core.hooksPath = git-hooks)"
-
 test:
 	@echo "Running test suite (37 test files)..."
 	@echo "Expected: 3-5 minutes (previously 25+ min before optimizations)"
 	@echo ""
 	@time $(MIX) test
 
-credo:
-	$(MIX) credo --only warning
+# Called by the shared `compile` target (bot_army_infra/make/common.mk), which
+# `make push` depends on. Without it `make push` dies with
+# "No rule to make target '_compile-impl'".
+_compile-impl:
+	@LOG_FILE="/tmp/compile-full-$$(date +%s).log"; \
+	echo "Compiling and logging to $$LOG_FILE..."; \
+	$(MIX) compile 2>&1 | tee "$$LOG_FILE"; \
+	echo "✓ Compilation log: $$LOG_FILE"
 
 dialyzer: deps
 	$(MIX) dialyzer
@@ -170,3 +170,18 @@ repo-map:
 
 repo-map-check:
 	@bash scripts/generate_repo_map.sh --check
+
+
+# ── Shared targets (push, git-push, credo, setup-hooks, compile, pre-push-cleanup,
+# bump-version, sync-hook). Defined once in bot_army_infra so they cannot drift
+# per repo.
+# * ergon-synapse-lite had NO push / git-jush / bump-version target: the standard fleet
+# driver (bump → push → publish → deploy) could not drive it at all.
+#
+# No version bump: build tooling only; the release artifact is unchanged.
+BOT_ARMY_COMMON_MK := $(abspath $(CURDIR)/../bot_army_infra/make/common.mk)
+ifeq ($(wildcard $(BOT_ARMY_COMMON_MK)),)
+$(warning bot_army_infra not found at $(BOT_ARMY_COMMON_MK) - shared targets unavailable)
+else
+include $(BOT_ARMY_COMMON_MK)
+endif
