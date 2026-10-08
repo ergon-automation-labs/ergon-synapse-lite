@@ -94,7 +94,7 @@ publish-release: release
 	echo "[3/3] Publishing to GitHub..."; \
 	gh release create v$$VERSION synapse-$$VERSION.tar.gz \
 		--title "Release v$$VERSION" \
-		--notes "Synapse Elixir release v$$VERSION. Download and deploy with Jenkins." \
+		--notes "Synapse Elixir release v$$VERSION." \
 		--draft=false; \
 	echo ""; \
 	echo "✓ Release v$$VERSION published successfully"; \
@@ -102,6 +102,7 @@ publish-release: release
 	echo "Timeline: test (~3-5min) → build release (~1min) → publish (~1min)"; \
 	echo ""'
 
+	@$(MAKE) publish-deploy-event TARGET=air
 watch-pi-go-trigger-decisions:
 	@echo "Subscribing to events.synapse.pi_go.trigger.decision on $${NATS_HOST:-host.docker.internal}:$${NATS_PORT:-4222}"
 	docker run --rm -it -e NATS_HOST -e NATS_PORT $(NATS_BOX_IMAGE) \
