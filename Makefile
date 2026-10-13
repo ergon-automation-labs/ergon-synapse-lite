@@ -76,11 +76,11 @@ release: test
 	@echo "==============================================="
 	@echo "Building OTP release"
 	@echo "==============================================="
-	rm -rf _build/prod/rel/synapse
+	rm -rf _build/prod/rel/synapse_bot
 	MIX_ENV=prod $(MIX) release
 	@echo ""
 	@echo "✓ Release built successfully"
-	@echo "Location: _build/prod/rel/synapse/"
+	@echo "Location: _build/prod/rel/synapse_bot/"
 	@echo ""
 
 publish-release: release
@@ -89,19 +89,19 @@ publish-release: release
 	@echo "==============================================="
 	@echo ""
 	@bash -c 'set -e; \
-	VERSION=$$(if [ -f _build/prod/rel/synapse/releases/start_erl.data ]; then awk "{print \$$2}" _build/prod/rel/synapse/releases/start_erl.data; else tail -1 _build/prod/rel/synapse/releases/RELEASES | cut -d" " -f2; fi); \
+	VERSION=$$(if [ -f _build/prod/rel/synapse_bot/releases/start_erl.data ]; then awk "{print \$$2}" _build/prod/rel/synapse_bot/releases/start_erl.data; else tail -1 _build/prod/rel/synapse_bot/releases/RELEASES | cut -d" " -f2; fi); \
 	if [ -z "$$VERSION" ]; then echo "Could not read release version"; exit 1; fi; \
 	echo "[1/3] Version: $$VERSION"; \
-	echo "[2/3] Creating tarball (synapse-$$VERSION.tar.gz)..."; \
-	tar -czf synapse-$$VERSION.tar.gz -C _build/prod/rel synapse/; \
+	echo "[2/3] Creating tarball (synapse_bot-$$VERSION.tar.gz)..."; \
+	tar -czf synapse_bot-$$VERSION.tar.gz -C _build/prod/rel synapse_bot/; \
 	echo "[3/3] Publishing to GitHub..."; \
-	gh release create v$$VERSION synapse-$$VERSION.tar.gz \
+	gh release create v$$VERSION synapse_bot-$$VERSION.tar.gz \
 		--title "Release v$$VERSION" \
 		--notes "Synapse Elixir release v$$VERSION." \
 		--draft=false; \
 	echo ""; \
 	echo "✓ Release v$$VERSION published successfully"; \
-	rm synapse-$$VERSION.tar.gz; \
+	rm synapse_bot-$$VERSION.tar.gz; \
 	echo "Timeline: test (~3-5min) → build release (~1min) → publish (~1min)"; \
 	echo ""'
 

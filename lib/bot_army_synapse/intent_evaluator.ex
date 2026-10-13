@@ -222,7 +222,11 @@ defmodule BotArmySynapse.IntentEvaluator do
 
   @doc false
   def build_proactive_message_defer_prompt(_action, details, context) do
-    pending = get_in(context, [:summary, :pending_context_events]) || 0
+    # `context.summary` aggregates each observation type as
+    # `%{count:, values:, latest: %{value:, ...}}` — never a scalar. synapse's recorder stores
+    # the quantity as the observation's `value:`, so read it through the accessor instead of
+    # interpolating the aggregate map into the prompt.
+    pending = AccumulatedContext.latest_value(context, :pending_context_events)
 
     %{
       "text" =>
